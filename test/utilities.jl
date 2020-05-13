@@ -78,3 +78,33 @@ function is_valid_corr_cholesky(U::UpperTriangular)
     Ω = U'*U
     all(isapprox.(diag(Ω), 1)) && all(@. abs(Ω) ≤ (1+√eps()))
 end
+
+"""
+$(SIGNATURES)
+Check if the argument L is a valid factor loading matrix.
+"""
+function is_valid_factor_loading(L::Matrix{T}) where T
+    n, m = size(L)
+    for i in 1:n, j in i+1:m
+        L[i, j] ≈ 0 || return false
+    end
+    return true
+end
+
+"""
+$(SIGNATURES)
+
+Elements on or below the diagonal as a vector.
+"""
+function vec_below_diagonal(L::Matrix{T}) where T
+    n, m = size(L)
+    index = 1
+    x = Vector{T}(undef, lower_triangular_dimension(n, m))
+    for col in 1:m
+        for row in col:n
+            x[index] = L[row, col]
+            index += 1
+        end
+    end
+    return x
+end

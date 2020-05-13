@@ -6,7 +6,8 @@ import Tracker, ForwardDiff
 using LogDensityProblems: logdensity, logdensity_and_gradient
 using TransformVariables:
     AbstractTransform, ScalarTransform, VectorTransform, ArrayTransform,
-    unit_triangular_dimension, logistic, logistic_logjac, logit, inverse_and_logjac
+    unit_triangular_dimension, lower_triangular_dimension,
+    logistic, logistic_logjac, logit, inverse_and_logjac
 
 include("utilities.jl")
 
@@ -144,6 +145,32 @@ end
             if K > 1
                 test_transformation(t, is_valid_corr_cholesky;
                                     vec_y = vec_above_diagonal, N = 100)
+            end
+        end
+    end
+end
+
+
+@testset "to factor analysis loadings" begin
+    @testset "dimension checks" begin
+        L = FactorLoadings(3, 2)
+        wrong_x = zeros(dimension(L) + 1)
+
+        @test_throws ArgumentError L(wrong_x)
+        @test_throws ArgumentError transform(L, wrong_x)
+        @test_throws ArgumentError transform_and_logjac(L, wrong_x)
+    end
+
+    @testset "consistency checks" begin
+        for n in 1:8
+            for m in 1:n
+                t = FactorLoadings(n, m)
+                @test dimension(t) == ((2n + 1)*m - m^2) ÷ 2
+                CIENV && @info "testing factor loadings n, m = $n, $m"
+                if n > 1
+                    test_transformation(t, is_valid_factor_loading;
+                                        vec_y = vec_below_diagonal, N = 100)
+                end
             end
         end
     end
