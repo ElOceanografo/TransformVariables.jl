@@ -1,4 +1,4 @@
-export UnitVector, UnitSimplex, CorrCholeskyFactor
+export UnitVector, UnitSimplex, CorrCholeskyFactor, FactorLoadings
 
 ####
 #### building blocks
@@ -204,4 +204,50 @@ function inverse_at!(x::AbstractVector, index, t::CorrCholeskyFactor, U::UpperTr
         end
     end
     index
+end
+
+####
+#### Factor analysis loading matrix
+####
+
+@calltrans struct FactorLoadings <: VectorTransform
+    n::Int
+    m::Int
+    function FactorLoadings(n, m)
+        @argcheck n ≥ 1 "Output dimension should be positive."
+        @argcheck m ≥ 1 "Input dimension should be positive."
+        @argcheck n >= m "Output dimension should be >= input dimension"
+        new(n, m)
+    end
+end
+
+lower_triangular_dimension(n, m) = ((2n + 1) * m - m^2) ÷ 2 #sum(n - i + 1 for i in 1:m)
+
+dimension(t::FactorLoadings) = lower_triangular_dimension(t.n, t.m)
+
+function transform_with(flag::LogJacFlag, t::FactorLoadings, x::AbstractVector, index)
+    @unpack n, m = t
+    T = extended_eltype(x)
+    ℓ = logjac_zero(flag, T)
+    L = zeros(T, n, m)
+
+    for col in 1:m, row in col:n
+        L[row, col] = x[index]
+        index += 1
+    end
+    return L, ℓ, index
+end
+
+inverse_eltype(t::FactorLoadings, L::AbstractMatrix) = extended_eltype(L)
+
+function inverse_at!(x::AbstractVector, index, t::FactorLoadings, L::AbstractMatrix)
+    @unpack n, m = t
+    @argcheck size(L) == (n, m)
+    @inbounds for col in 1:m
+        for row in col:n
+            x[index] = L[row, col]
+            index += 1
+        end
+    end
+    return index
 end
